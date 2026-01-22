@@ -22,4 +22,25 @@ pip install -r requirements.txt
 
 `play.py`用训练好的模型开始玩游戏，把通关结果录制成视频
 
-`checkpoints_general`子目录保存模型的checkpoints
+`checkpoints`子目录保存模型的checkpoints
+
+# 启动前后端服务
+
+启动后端
+
+```shell
+uvicorn backend:app --host 0.0.0.0 --port 8000
+```
+
+启动前端
+
+```shell
+python -m http.server 3000
+```
+
+在本地浏览器访问
+
+```
+http://localhost:3000
+```
+

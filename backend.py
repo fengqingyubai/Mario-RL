@@ -35,7 +35,8 @@ def generate_video_endpoint(req: GameRequest):
     if not (1 <= req.world <= 8) or not (1 <= req.stage <= 4):
         raise HTTPException(status_code=400, detail="关卡范围错误")
 
-    filename = f"replay_w{req.world}_s{req.stage}_{uuid.uuid4().hex[:8]}.mp4"
+    
+    filename = f"replay_w{req.world}_s{req.stage}_{uuid.uuid4().hex[:8]}.webm"
     file_path = os.path.join(OUTPUT_DIR, filename)
 
     try:

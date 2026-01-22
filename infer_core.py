@@ -62,17 +62,14 @@ def record_gameplay(world: int, stage: int, deterministic: bool, output_path: st
     # 原始渲染尺寸通常是 256x240
     # ... (前面的代码)
     
+
     # 4. 视频配置
     width, height = 256, 240
     
-    # 【修改点 1】将 'mp4v' 改为 'avc1' (H.264)
-    # 如果你的系统报错说无法使用 avc1，可以尝试改为 'vp80' 并将文件后缀改为 .webm
-    try:
-        fourcc = cv2.VideoWriter_fourcc(*'avc1') 
-    except:
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v') # 兜底
+    # --- 删掉之前的 try/except 逻辑，直接用下面这一行 ---
+    fourcc = cv2.VideoWriter_fourcc(*'vp80') 
     
-    # 【修改点 2】确保 FPS 是 15.0
+    # 确保 video_writer 使用这个 fourcc
     video_writer = cv2.VideoWriter(output_path, fourcc, REAL_TIME_FPS, (width, height))
 
     # ... (后面的代码)
