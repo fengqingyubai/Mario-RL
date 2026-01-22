@@ -1,62 +1,64 @@
 import os
 import uuid
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles  # 👈 新增：用于提供静态文件访问
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from infer_core import record_gameplay
 
 app = FastAPI(title="Mario AI Backend")
 
-# 视频暂存目录
+# --- 1. 解决跨域问题 (必须加!) ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 允许任何来源
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 视频存储目录
 OUTPUT_DIR = "videos_output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# 定义请求参数结构
+# --- 2. 【核心】挂载静态目录 ---
+# 这样访问 http://localhost:8000/videos/xxx.mp4 就能直接看视频
+app.mount("/videos", StaticFiles(directory=OUTPUT_DIR), name="videos")
+
 class GameRequest(BaseModel):
     world: int
     stage: int
-    deterministic: bool = True # 默认使用确定性最强策略
-
-@app.get("/")
-def health_check():
-    return {"status": "ok", "msg": "Mario AI Service is running"}
+    deterministic: bool = True
 
 @app.post("/generate_video")
 def generate_video_endpoint(req: GameRequest):
-    """
-    接收关卡和策略，返回生成的视频文件
-    """
-    # 简单的参数校验
     if not (1 <= req.world <= 8) or not (1 <= req.stage <= 4):
-        raise HTTPException(status_code=400, detail="关卡范围错误，World:1-8, Stage:1-4")
+        raise HTTPException(status_code=400, detail="关卡范围错误")
 
-    # 生成唯一的视频文件名，避免冲突
     filename = f"replay_w{req.world}_s{req.stage}_{uuid.uuid4().hex[:8]}.mp4"
     file_path = os.path.join(OUTPUT_DIR, filename)
 
     try:
-        print(f"收到请求: World {req.world}-{req.stage}, Det={req.deterministic}")
+        print(f"🎥 处理请求: World {req.world}-{req.stage}")
         
-        # 调用核心推理逻辑
+        # 调用推理
         record_gameplay(
             world=req.world,
             stage=req.stage,
             deterministic=req.deterministic,
             output_path=file_path,
-            checkpoint_root="./checkpoints" # 你的模型根目录
+            checkpoint_root="./checkpoints"
         )
         
         if not os.path.exists(file_path):
             raise HTTPException(status_code=500, detail="视频生成失败")
 
-        # 返回视频文件
-        # media_type="video/mp4" 让浏览器可以直接播放
-        return FileResponse(file_path, media_type="video/mp4", filename=filename)
+        # --- 3. 【核心】返回 URL 而不是文件本身 ---
+        # 假设你的服务器在本地，返回对应的访问链接
+        video_url = f"http://localhost:8000/videos/{filename}"
+        
+        return {"status": "success", "video_url": video_url}
 
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         print(f"Error: {e}")
-        raise HTTPException(status_code=500, detail="服务器内部错误")
-
-# 清理任务（可选）：定期清理旧视频，或者在返回后删除（需要BackgroundTasks）
+        raise HTTPException(status_code=500, detail=str(e))

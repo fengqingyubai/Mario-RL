@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mario AI Playroom</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --mario-red: #E52521;
+            --sky-blue: #6B8CFF;
+            --ground-brown: #924403;
+            --coin-gold: #F8D820;
+            --pipe-green: #009D00;
+            --bg-color: #5C94FC;
+            --pixel-font: 'Press Start 2P', cursive;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--pixel-font);
+            background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(transparent 95%, rgba(0,0,0,0.1) 95%),
+                linear-gradient(90deg, transparent 95%, rgba(0,0,0,0.1) 95%);
+            background-size: 20px 20px;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        /* CRT 电视扫描线效果 */
+        .crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .game-console {
+            background-color: #000;
+            border: 4px solid #fff;
+            padding: 2px;
+            box-shadow: 10px 10px 0px rgba(0,0,0,0.4);
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .screen-border {
+            border: 4px solid #808080;
+            background-color: #000;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        h1 {
+            color: var(--mario-red);
+            text-shadow: 4px 4px #000;
+            font-size: 2rem;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+            background: #222;
+            padding: 20px;
+            border: 4px solid var(--ground-brown);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 0.8rem;
+            color: var(--coin-gold);
+        }
+
+        select, input[type="checkbox"] {
+            font-family: var(--pixel-font);
+            font-size: 1rem;
+            padding: 10px;
+            border: 4px solid #fff;
+            background: #000;
+            color: #fff;
+            outline: none;
+            cursor: pointer;
+        }
+
+        select:hover {
+            background: #333;
+        }
+
+        /* 定制 Checkbox 样式 */
+        .toggle-wrapper {
+            display: flex;
+            align-items: center;
+            height: 100%;
+            padding-top: 10px;
+        }
+        
+        .toggle-btn {
+            background: var(--mario-red);
+            border: 4px solid #fff;
+            color: #fff;
+            padding: 15px 30px;
+            font-family: var(--pixel-font);
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            box-shadow: 0 6px 0 #900;
+            transition: all 0.1s;
+        }
+
+        .toggle-btn:active {
+            box-shadow: 0 0 0 #900;
+            transform: translateY(6px);
+        }
+
+        .toggle-btn:disabled {
+            background: #555;
+            box-shadow: 0 6px 0 #222;
+            cursor: not-allowed;
+            color: #aaa;
+        }
+
+        /* 视频容器 */
+        .video-stage {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #111;
+            border: 2px dashed #444;
+            min-height: 300px;
+            position: relative;
+        }
+
+        video {
+            width: 100%;
+            max-width: 512px; /* 256 * 2 */
+            image-rendering: pixelated; /* 保持像素清晰 */
+            border: 4px solid #fff;
+        }
+
+        /* 加载动画 (8-bit 风格) */
+        .loading-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .pixel-spinner {
+            width: 60px;
+            height: 60px;
+            background: transparent;
+            border: 8px solid transparent;
+            border-top-color: var(--coin-gold);
+            border-right-color: var(--coin-gold);
+            border-radius: 50%;
+            animation: spin 1s steps(8) infinite; /* steps(8) 让旋转有卡顿感，像老游戏 */
+            box-shadow: 0 0 0 4px #000;
+            margin-bottom: 20px;
+        }
+
+        .loading-text {
+            color: var(--coin-gold);
+            animation: blink 0.8s infinite;
+            font-size: 0.8rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* 状态提示 */
+        .status-bar {
+            margin-top: 10px;
+            font-size: 0.7rem;
+            color: #888;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="crt-overlay"></div>
+
+    <div class="game-console">
+        <div class="screen-border">
+            <h1>SUPER MARIO<br>AI REPLAY</h1>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label>WORLD</label>
+                    <select id="world-select">
+                        </select>
+                </div>
+
+                <div class="control-group">
+                    <label>STAGE</label>
+                    <select id="stage-select">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>AI MODE</label>
+                    <select id="mode-select">
+                        <option value="true">DETERMINISTIC (Strong)</option>
+                        <option value="false">STOCHASTIC (Creative)</option>
+                    </select>
+                </div>
+
+                <div class="control-group" style="justify-content: flex-end;">
+                    <button class="toggle-btn" id="start-btn" onclick="startGeneration()">START</button>
+                </div>
+            </div>
+
+            <div class="video-stage" id="video-container">
+                <div id="placeholder-text" style="color: #444; text-align: center;">
+                    <p>SELECT LEVEL</p>
+                    <p>PRESS START</p>
+                </div>
+
+                <video id="game-video" controls class="hidden"></video>
+
+                <div id="loader" class="loading-overlay hidden">
+                    <div class="pixel-spinner"></div>
+                    <div class="loading-text">AI IS THINKING...</div>
+                    <div class="status-bar" id="status-text">Creating Neural Replay</div>
+                </div>
+            </div>
+            
+            <div class="status-bar">
+                POWERED BY PPO / SWANLAB
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. 初始化 World 下拉框 (1-8)
+        const worldSelect = document.getElementById('world-select');
+        for (let i = 1; i <= 8; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.text = `WORLD ${i}`;
+            worldSelect.appendChild(option);
+        }
+
+        // 2. 核心逻辑
+        async function startGeneration() {
+            const world = parseInt(document.getElementById('world-select').value);
+            const stage = parseInt(document.getElementById('stage-select').value);
+            const isDeterministic = document.getElementById('mode-select').value === 'true';
+            
+            const startBtn = document.getElementById('start-btn');
+            const loader = document.getElementById('loader');
+            const videoEl = document.getElementById('game-video');
+            const placeholder = document.getElementById('placeholder-text');
+            const statusText = document.getElementById('status-text');
+
+            // UI 状态切换
+            startBtn.disabled = true;
+            startBtn.innerText = "WAIT...";
+            placeholder.classList.add('hidden');
+            videoEl.classList.add('hidden');
+            loader.classList.remove('hidden');
+            statusText.innerText = `Loading World ${world}-${stage}...`;
+            try {
+                const API_URL = "http://localhost:8000/generate_video";
+                
+                // 1. 发送请求
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        world: world,
+                        stage: stage,
+                        deterministic: isDeterministic
+                    })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || "Server Error");
+                }
+
+                // --- 修改开始 ---
+                // 2. 解析 JSON 拿到 URL
+                const data = await response.json();
+                const videoUrl = data.video_url; 
+                console.log("视频地址:", videoUrl); // 方便调试
+
+                // 3. 播放视频
+                loader.classList.add('hidden');
+                videoEl.classList.remove('hidden');
+                
+                // 给 video 标签设置 src
+                videoEl.src = videoUrl;
+                // 某些浏览器需要静音才能自动播放，这里先静音比较稳
+                videoEl.muted = false; 
+                videoEl.load();
+                
+                // 尝试播放
+                try {
+                    await videoEl.play();
+                } catch (playError) {
+                    console.log("自动播放被拦截，请手动点击播放", playError);
+                }
+                // --- 修改结束 ---
+
+            } catch (error) {
+                alert("GAME OVER!\nError: " + error.message);
+                loader.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                placeholder.innerHTML = `<p style="color:var(--mario-red)">ERROR</p><p>${error.message}</p>`;
+            } finally {
+                startBtn.disabled = false;
+                startBtn.innerText = "START";
+            }
+   
+
+
+
+           
+        }
+    </script>
+</body>
+</html>
