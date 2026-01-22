@@ -44,3 +44,9 @@ filelock==3.16.1
 typing_extensions==4.13.2
 protobuf==5.29.5
 google-auth==2.47.0
+
+
+fastapi 
+uvicorn 
+pydantic
+
