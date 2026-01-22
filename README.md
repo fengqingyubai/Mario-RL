@@ -9,7 +9,16 @@ conda create -n mario python=3.9 -y
 # 激活环境
 conda activate mario
 python -m pip install pip==23.3.1
+
+
+# 先把编译工具降级，才能成功安装gym
+pip install setuptools==58.2.0
+pip install wheel==0.37.1
+# Windows 可能需要装Microsoft C++ Build Tools
 pip install -r requirements.txt
+
+
+
 ```
 
 # 项目核心代码
